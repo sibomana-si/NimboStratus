@@ -9,7 +9,7 @@
  * you will need to modify the encrypt_script.pl and decrypt_script.pl.
  * Specifically, the lines in the Encrypt function (Sub Encrypt) and 
  * Decrypt function (Sub Decrypt), that specify the syntax of the 
- * encryption function.
+ * encryption application.
  * We also assume that you're setting up this configuration on a linux 
  * machine.
  */

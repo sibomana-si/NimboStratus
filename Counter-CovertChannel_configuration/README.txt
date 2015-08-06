@@ -1,19 +1,23 @@
 /* This document serves as a short tutorial to setting up the
- * Counter-Collusion configuration for use.
+ * Counter-CovertChannels configuration for use.
  * It assumes that you have decided to use Dropbox as your Cloud 
- * Storage Provider, and aescrypt and ccrypt as the two encryption 
- * applications.
- * If you decide to use a different encryption application/
- * CSP, the steps regarding the installation of the encryption 
- * application/ CSP client may be different.
- * Also if you decide to use a different encryption application
- * you will need to modify the scripts, encrypt_script.pl and 
- * decrypt_script.pl, in the appropriate encryption container.
+ * Storage Provider.
+ * We also assume that you're setting up this configuration on a 
+ * linux machine.
+ * This configuration requires the use of two different encryption 
+ * applications that encrypt deterministically, i.e. given the same
+ * input file, encryption key, and initialization vector, the two
+ * encryption applications produce the same ciphertext.
+ * You can either search for, and download, two encryption applications
+ * that achieve this, or build your encryption applications. We have
+ * provided wrapper code (in the enc_wrapper directory), to facilitate
+ * building your own encryption applications using standard crypto-
+ * graphic libraries.
+ * Remember to modify the scripts, encrypt_script.pl and 
+ * decrypt_script.pl, in the directories enc_mod1 and enc_mod2.
  * Specifically, the lines in the Encrypt function (Sub Encrypt) and 
  * Decrypt function (Sub Decrypt), that specify the syntax of the 
  * encryption application.
- * We also assume that you're setting up this configuration on a linux 
- * machine.
  */
 
 /* STEP 1:
@@ -21,49 +25,67 @@
  * configuration.
  */
 
-	$ mkdir /tmp/counter-collusion_config_files
-	$ cd /tmp/counter-collusion_config_files
+	$ mkdir /tmp/counter-covchannels_config_files
+	$ cd /tmp/counter-covchannels_config_files
 
 /* STEP 2:
- * Then copy the files which we have provided (counter-collusion_config.sh,
- * and the directories enc_mod1 and enc_mod2) into this directory.
- * Also download the aescrypt encryption application 
- * (https://www.aescrypt.com/download/v3/linux/aescrypt-3.10.tgz),  
- * and the ccrypt encryption application 
- * (http://ccrypt.sourceforge.net/download/ccrypt-1.10.linux-x86_64.tar.gz)
+ * Then copy the files which we have provided 
+ * (counter-covertchannels_config.sh, and the directories 
+ * init_module_scripts, ver_module_scripts, and enc_module_scripts)
  * into this directory.
+ * Also copy the encryption applications that you are using into
+ * this directory.
  */
 
-	$ cp <PATH TO DIRECTORY WHERE SCRIPTS ARE SAVED>/* /tmp/split-trust_config_files/
-	$ wget https://www.aescrypt.com/download/v3/linux/aescrypt-3.10.tgz
-	$ wget http://ccrypt.sourceforge.net/download/ccrypt-1.10.linux-x86_64.tar.gz
- 
+	$ cp <PATH TO DIRECTORY WHERE SCRIPTS ARE LOCATED>/* /tmp/counter-covchannels_config_files/
+	$ cp <PATH TO DIRECTORY WHERE ENCRYPTION APPLICATIONS ARE LOCATED>/* /tmp/counter-covchannels_config_files/
+	
  
 /* STEP 3:
  * Run the configuration setup script 
  */
 
-	$ ./counter-collusion_config.sh
+	$ ./counter-covertchannels_config.sh
 
 	
 /* STEP 4:
- * Check that the three docker containers (automated-enc_module, automated-enc_module2,
- * and automated-csp_module) have been created and are running.
+ * Check that five docker containers (automated-init_module, 
+ * automated-enc_module, automated-enc_module2, automated-ver_module,
+ * and automated-csp_module) have been created, and are running.
  */
  
 	$ docker ps
 
-	
 /* STEP 5:
+ * Transfer the init_module scripts (in-out_transfer.pl,
+ * out-in_transfer.pl, and out-in_transfer2.pl) to the scripts
+ * directory in the automated-init_module container.
+ */
+ 
+	$ cp init_module_scripts/*   ~/framework_space/plain_dir/
+	$ docker exec automated-init_module mv /decrypted/* /scripts/
+	
+	
+/* STEP 6:
+ * Transfer the ver_module scripts (in-out_transfer.pl,
+ * out-in_transfer.pl, and out-in_transfer2.pl) to the scripts
+ * directory in the automated-ver_module container.
+ */
+ 
+	$ cp ver_module_scripts/*   ~/framework_space/enc1-ver_dir/
+	$ docker exec automated-ver_module mv /decrypted/* /scripts/
+
+ 
+/* STEP 7:
  * Transfer the encryption applications, and encrypt/decrypt scripts into the
  * encryption containers (automated-enc_module and automated-enc_module2)
  */
 
-	$ cp aescrypt-3.10.tgz  enc_mod1/*   ~/framework_space/plain_dir/
-	$ cp ccrypt-1.10.linux-x86_64.tar.gz  enc_mod2/*   ~/framework_space/enc1-enc2_dir/
+	$ cp <PATH_TO_ENCRYPTION_APPLICATION1>  enc_module_scripts/enc_mod1/*   ~/framework_space/init-enc1_dir/
+	$ cp <PATH_TO_ENCRYPTION_APPLICATION2>  enc_module_scripts/enc_mod2/*   ~/framework_space/init-enc2_dir/
 
 	
-/* STEP 6:
+/* STEP 8:
  * access the first encryption container 
  */
 
@@ -72,7 +94,7 @@
  < If you don't immediately get the command prompt, press the ENTER key>
 
 
-/* STEP 7:
+/* STEP 9:
  * Transfer the encryption/decryption scripts to the scripts directory 
  * in this container.
  */
@@ -81,28 +103,24 @@
 	# mv /decrypted/decrypt_script.pl /scripts/
 
 
-/* STEP 8:
+/* STEP 10:
  * Transfer the encryption application to the tmp directory 
  */
 
-	# mv /decrypted/aescrypt-3.10.tgz /tmp/
+	# mv /decrypted/<ENCRYPTION APPLICATION1> /tmp/
 
 
-/* STEP 9:
- * Install encryption application 
+/* STEP 11:
+ * Install the encryption application. 
  */
 
-	# tar -xzf aescrypt-3.10.tgz
-	# cd aescrypt-3.10/src/
-	# make
-	# make install
 
-/* STEP 10:
- * Download the keyfile, which contains the default password (randomly generated)
- * that will be used by the encryption application (aescrypt) for encryption/
+/* STEP 12:
+ * Download the keyfile, which contains the encryption key and IV (randomly generated)
+ * that will be used by encryption application 1 for encryption/
  * decryption. This step assumes that you are going to setup this configuration on 
  * multiple devices, each synced to the same Dropbox account.
- * Since each time the setup script (counter-collusion_config.sh) is run on a new machine,
+ * Since each time the setup script (counter-covertchannels_config.sh) is run on a new machine,
  * a different "keyfile" file will be generated, and we need all the machines to 
  * use the same keyfile for encryption/decryption, the user will have to copy the 
  * file "keyfile" from one of the machines and securely transfer it to the scripts
@@ -113,23 +131,23 @@
 	# cp /scripts/keyfile /decrypted/
 
 	
-/* STEP 11:
+/* STEP 13:
  * Exit the encryption container.
  */
 
 	# exit
 
 	
-/* STEP 12:
- * Move keyfile to the counter-collusion_config_files directory (and immediately transfer it 
+/* STEP 14:
+ * Move keyfile to the counter-covchannels_config_files directory (and immediately transfer it 
  * to the other machines that the user wants to keep in sync.)
  * Make sure to delete it afterwards, so there's no copy of it in an unsecure location.
  */
  
-	$ mv ~/framework_space/plain_dir/keyfile /tmp/counter-collusion_config_files/enc_mod1_keyfile
+	$ mv ~/framework_space/init-enc1_dir/keyfile /tmp/counter-covchannels_config_files/enc_mod1_keyfile
 
 
-/* STEP 13:
+/* STEP 15:
  * access the second encryption container 
  */
 
@@ -138,7 +156,7 @@
  < If you don't immediately get the command prompt, press the ENTER key>
 
 
-/* STEP 14:
+/* STEP 16:
  * Transfer the encryption/decryption scripts to the scripts directory 
  * in this container.
  */
@@ -147,25 +165,19 @@
 	# mv /decrypted/decrypt_script.pl /scripts/
 
 
-/* STEP 15:
+/* STEP 17:
  * Transfer the encryption application to the tmp directory 
  */
 
-	# mv /decrypted/ccrypt-1.10.linux-x86_64.tar.gz /tmp/
+	# mv /decrypted/<ENCRYPTION APPLICATION2> /tmp/
 
 
-/* STEP 16:
- * Install encryption application 
+/* STEP 18:
+ * Install the encryption application 
  */
 
-	# tar -xzf ccrypt-1.10.linux-x86_64.tar.gz
-	# cd ccrypt-1.10/
-	# ./configure
-	# make
-	# make install
-
 	
-/* STEP 17:
+/* STEP 19:
  * Download the keyfile generated for this container (This assumes you are setting up
  * this configuration on several machines, that will be synced to the same Dropbox
  * account.
@@ -174,23 +186,23 @@
 	# cp /scripts/keyfile /decrypted/
 
 
-/* STEP 18:
+/* STEP 20:
  * Exit the encryption container.
  */
 
 	# exit
 
 	
-/* STEP 19:
- * Move keyfile to the counter-collusion_config_files directory (and immediately 
+/* STEP 21:
+ * Move keyfile to the counter-covchannels_config_files directory (and immediately 
  * transfer it to the other machines that the user wants to keep in sync.)
  * Make sure to delete it afterwards, so there's no copy of it in an unsecure location.
  */
  
-	$ mv ~/framework_space/enc1-enc2_dir/keyfile /tmp/counter-collusion_config_files/enc_mod2_keyfile
+	$ mv ~/framework_space/init-enc2_dir/keyfile /tmp/counter-covchannels_config_files/enc_mod2_keyfile
 
 	
-/* STEP 20:
+/* STEP 22:
  * Access the CSP container.
  */
 
@@ -199,7 +211,7 @@
 	< If you don't immediately get the command prompt, press the ENTER key>
 	
 	 
-/* STEP 21:
+/* STEP 23:
  * Install the Dropbox client application.
  */
 
@@ -208,7 +220,7 @@
 	# .dropbox-dist/dropboxd
 	
 
-/* STEP 22:
+/* STEP 24:
  * At this point you are required to copy a link generated by the Dropbox client,
  * to your browser, and to log in to your dropbox account.
  * Once you have completed the login step, the Dropbox installation is complete, and
@@ -216,14 +228,14 @@
  */
  
 
-/* STEP 23:
+/* STEP 25:
  * Stop the Dropbox client 
  */
  
 	<CTRL-C (simultaneously press the Ctrl and C buttons to stop the dropbox client)>
 
 	
-/* STEP 24:
+/* STEP 26:
  * Create a symbolic link in the Dropbox directory, that points to
  * the directory "/csp" in this container. Then exit the container.
  */
@@ -232,7 +244,7 @@
 	# exit
 
 	
-/* STEP 25:
+/* STEP 27:
  * Restart the three containers(automated-enc_module, automated-enc_module2,
  * and automated-csp_module) in the background.
  */
@@ -242,15 +254,18 @@
 	$ docker start automated-csp_module
 
 	
-/* STEP 26:
- * Start the incron filesystem monitoring tool, in the two encryption containers. 
+/* STEP 28:
+ * Start the incron filesystem monitoring tool, in the init, verification, and
+ * encryption containers. 
  */
 
+	$ docker exec automated-init_module incrond
+	$ docker exec automated-ver_module incrond
 	$ docker exec automated-enc_module incrond
 	$ docker exec automated-enc_module2 incrond
 
 	
-/* STEP 27:
+/* STEP 29:
  * Start the Dropbox client 
  */
 	
@@ -278,19 +293,19 @@
  * - In STEP 2, in addition to copying the scripts, also copy the two
  *	 files, enc_mod1_keyfile, and enc_mod2_keyfile (obtained from the 
  *   configuration setup on the first machine), 
- *   to the directory /tmp/counter-collusion_config_files/
+ *   to the directory /tmp/counter-covchannels_config_files/
  *
- * - In STEP 5, in addition to copying the scripts, also copy the
+ * - In STEP 7, in addition to copying the scripts, also copy the
  *   the "keyfile" files retrieved from the first machine. i.e.
  * 	
- *		$ cp enc_mod1_keyfile  ~/framework_space/plain_dir/keyfile
- *  	$ cp enc_mod2_keyfile  ~/framework_space/enc1-enc2_dir/keyfile
+ *		$ cp enc_mod1_keyfile  ~/framework_space/init-enc1_dir/keyfile
+ *  	$ cp enc_mod2_keyfile  ~/framework_space/init-enc2_dir/keyfile
  *
  *
- * - In STEP 7 and STEP 14, in addition to the scripts, move the file "keyfile" 
+ * - In STEP 9 and STEP 16, in addition to the scripts, move the file "keyfile" 
  *   to the scripts directory:
  *
- * 		$ mv /decrypted/keyfile /scripts/
+ *  	$ mv /decrypted/keyfile /scripts/
  * 
- * - SKIP STEP 10, 12, 17, and 19.
+ * - SKIP STEP 12, 14, 19 and 21.
  */

@@ -63,8 +63,15 @@
  */
  
 	$ cp init_module_scripts/*   ~/framework_space/plain_dir/
-	$ docker exec automated-init_module mv /decrypted/* /scripts/
+
+	$ docker start -i -a automated-init_module
 	
+	<If you don't immediately get the command prompt, press the ENTER key>
+	
+	# mv /decrypted/* /scripts/
+	# exit
+	
+
 	
 /* STEP 6:
  * Transfer the ver_module scripts (in-out_transfer.pl,
@@ -73,7 +80,13 @@
  */
  
 	$ cp ver_module_scripts/*   ~/framework_space/enc1-ver_dir/
-	$ docker exec automated-ver_module mv /decrypted/* /scripts/
+	
+	$ docker start -i -a automated-ver_module
+	
+	<If you don't immediately get the command prompt, press the ENTER key>
+	
+	# mv encrypted/* scripts/
+	# exit
 
  
 /* STEP 7:
@@ -91,7 +104,7 @@
 
 	$ docker start -i -a automated-enc_module
 
- < If you don't immediately get the command prompt, press the ENTER key>
+ <If you don't immediately get the command prompt, press the ENTER key>
 
 
 /* STEP 9:
@@ -153,7 +166,7 @@
 
 	$ docker start -i -a automated-enc_module2
 
- < If you don't immediately get the command prompt, press the ENTER key>
+ <If you don't immediately get the command prompt, press the ENTER key>
 
 
 /* STEP 16:
@@ -208,7 +221,7 @@
 
 	$ docker start -i -a automated-csp_module
 
-	< If you don't immediately get the command prompt, press the ENTER key>
+	<If you don't immediately get the command prompt, press the ENTER key>
 	
 	 
 /* STEP 23:

@@ -53,52 +53,57 @@ sub Decrypt
  	return $output;
   }
 
-# This script monitors the "encrypted" directory which holds 
-# ciphertext files.
-# When an encrypted file, received from, or being sent to, the 
-# VERFICATION container, lands in this directory, this script 
-# is triggered, and the url of the file is passed to this script.
-
-chomp($url);
-
-# we extract the file name from the url
-my $fname = fileparse($url);
-my $compareFile = $tmpEnc . $fname; 
-
-# We check if the file that triggered the script has a similar copy
-# in the tmpEnc directory. If a similar copy exists in the tmpEnc 
-# directory, it means that the file should not be decrypted, since 
-# it has just been encrypted.
-# When the "encrypt_script", in charge of encryption, encrypts a file,
-# it places a copy of the encrypted file in the tmpEnc 
-# directory, before copying the file to the "encrypted" directory.
-# This helps distinguish between the case where a file entering the 
-# "encrypted" directory(which triggers this script), is from the CSP and 
-# needs to be decrypted, or is from the user and has just been encrypted. 
-my $fileCheck = compare($url, $compareFile);  
-  
-if ( $fileCheck == 0 )
+sub Main 
   {
-	# if a similar copy of the file exists in the tmpEnc directory,
-	# we delete the copy of the file in the tmpEnc directory, and exit.
-	# There's nothing else to do.
-	unlink $compareFile;
-  }
-else
-  { 
-	# otherwise, we open the file containing the decryption key and IV,
-	# extract the two values, and close the file.
-	open(KEYFILE, "<$keyFile") || die("failed to open $keyFile\n");
-	if ((read KEYFILE, $key, 16) != 16) {die("failed to read key\n")};
-	if ((read KEYFILE, $iv, 16) != 16) {die("failed to read iv\n")};
-	close(KEYFILE);
+	# This script monitors the "encrypted" directory which holds 
+	# ciphertext files.
+	# When an encrypted file, received from, or being sent to, the 
+	# VERFICATION container, lands in this directory, this script 
+	# is triggered, and the url of the file is passed to this script.
 
-	# we then pass the url of the file to be decrypted, the filename, and
-	# the decryption key and IV, to the Decrypt function.
-	# The Decrypt function decrypts the file, then returns the full path
-	# to the decrypted file.
-	# The decrypted file is then copied to the "decrypted" directory, and this
-	# script's work is done.
- 	my $outFile = Decrypt($url, $fname, $key, $iv);
- 	copy($outFile, $decrypted);
+	chomp($url);
+
+	# we extract the file name from the url
+	my $fname = fileparse($url);
+	my $compareFile = $tmpEnc . $fname; 
+
+	# We check if the file that triggered the script has a similar copy
+	# in the tmpEnc directory. If a similar copy exists in the tmpEnc 
+	# directory, it means that the file should not be decrypted, since 
+	# it has just been encrypted.
+	# When the "encrypt_script", in charge of encryption, encrypts a file,
+	# it places a copy of the encrypted file in the tmpEnc 
+	# directory, before copying the file to the "encrypted" directory.
+	# This helps distinguish between the case where a file entering the 
+	# "encrypted" directory(which triggers this script), is from the CSP and 
+	# needs to be decrypted, or is from the user and has just been encrypted. 
+	my $fileCheck = compare($url, $compareFile);  
+  
+	if ( $fileCheck == 0 )
+	 {
+		# if a similar copy of the file exists in the tmpEnc directory,
+		# we delete the copy of the file in the tmpEnc directory, and exit.
+		# There's nothing else to do.
+		unlink $compareFile;
+	 }
+	else
+	 { 
+		# otherwise, we open the file containing the decryption key and IV,
+		# extract the two values, and close the file.
+		open(KEYFILE, "<$keyFile") || die("failed to open $keyFile\n");
+		if ((read KEYFILE, $key, 16) != 16) {die("failed to read key\n")};
+		if ((read KEYFILE, $iv, 16) != 16) {die("failed to read iv\n")};
+		close(KEYFILE);
+
+		# we then pass the url of the file to be decrypted, the filename, and
+		# the decryption key and IV, to the Decrypt function.
+		# The Decrypt function decrypts the file, then returns the full path
+		# to the decrypted file.
+		# The decrypted file is then copied to the "decrypted" directory, and this
+		# script's work is done.
+		my $outFile = Decrypt($url, $fname, $key, $iv);
+		copy($outFile, $decrypted);
+	 }
   }
+  
+Main();

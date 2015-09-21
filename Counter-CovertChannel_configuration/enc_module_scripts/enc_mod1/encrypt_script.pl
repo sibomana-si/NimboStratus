@@ -52,55 +52,60 @@ sub Encrypt
 	unlink $file;
  	return $output;
   }
+
+sub Main 
+  {  
+	# This script monitors the "decrypted" directory via which, plaintext 
+	# files are exchanged with the INIT container.
+	# When a file, to be encrypted (received from the INIT container), or 
+	# which has just been decrypted (to be sent to the INIT container), 
+	# lands on this directory, this script is triggered, and the url of the 
+	# file is passed to this script.
+
+	chomp($url);
+
+	# we extract the file name from the url
+	my $fname = fileparse($url);
+	my $compareFile = $tmpDec . $fname;  
+
+	# We check if the file that triggered the script has a similar copy
+	# in the "tmpDec" directory. If a similar copy exists in the tmpDec 
+	# directory, it means that the file should not be encrypted, since 
+	# it has just been decrypted.
+	# When the "decrypt_script", in charge of decryption, decrypts a file,
+	# it places a copy of the decrypted plaintext file in the tmpDec 
+	# directory, before copying the file to the "decrypted" directory.
+	# This helps distinguish between the case where a file entering the "decrypted"
+	# directory(which triggers this script), is from the CSP and has just 
+	# been decrypted, or is from the user and needs to be encrypted before being 
+	# sent to the CSP.
+	my $fileCheck = compare($url, $compareFile);  
+
+	if ($fileCheck == 0)
+	 {
+		# if a similar copy of the file exists in the tmpDec directory,
+		# we delete the copy of the file in the tmpDec directory, and exit.
+		# There's nothing else to do.
+		unlink $compareFile;
+	 }
+	else
+     {
+		# otherwise, we open the file containing the encryption key and IV,
+		# extract the two values, and close the file.
+		open(KEYFILE, "<$keyFile") || die("failed to open $keyFile\n");
+		if ((read KEYFILE, $key, 16) != 16) {die("failed to read key\n")};
+		if ((read KEYFILE, $iv, 16) != 16) {die("failed to read iv\n")};
+		close(KEYFILE);
+
+		# we then pass the url of the file to be encrypted, the filename, and
+		# the encryption key and IV, to the encryption function.
+		# The encryption function encrypts the file, then returns the full path
+		# to the encrypted file.
+		# The encrypted file is then copied to the encrypted directory, and this
+		# script's work is done.
+		my $outFile = Encrypt($url, $fname, $key, $iv); 
+		copy($outFile, $encrypted);
+	 }
+  }
  
-# This script monitors the "decrypted" directory via which, plaintext 
-# files are exchanged with the INIT container.
-# When a file, to be encrypted (received from the INIT container), or 
-# which has just been decrypted (to be sent to the INIT container), 
-# lands on this directory, this script is triggered, and the url of the 
-# file is passed to this script.
-
-chomp($url);
-
-# we extract the file name from the url
-my $fname = fileparse($url);
-my $compareFile = $tmpDec . $fname;  
-
-# We check if the file that triggered the script has a similar copy
-# in the "tmpDec" directory. If a similar copy exists in the tmpDec 
-# directory, it means that the file should not be encrypted, since 
-# it has just been decrypted.
-# When the "decrypt_script", in charge of decryption, decrypts a file,
-# it places a copy of the decrypted plaintext file in the tmpDec 
-# directory, before copying the file to the "decrypted" directory.
-# This helps distinguish between the case where a file entering the "decrypted"
-# directory(which triggers this script), is from the CSP and has just 
-# been decrypted, or is from the user and needs to be encrypted before being 
-# sent to the CSP.
-my $fileCheck = compare($url, $compareFile);  
-
-if ($fileCheck == 0)
-  {
-	# if a similar copy of the file exists in the tmpDec directory,
-	# we delete the copy of the file in the tmpDec directory, and exit.
-	# There's nothing else to do.
-	unlink $compareFile;
-  }
-else
-  {
-	# otherwise, we open the file containing the encryption key and IV,
-	# extract the two values, and close the file.
-	open(KEYFILE, "<$keyFile") || die("failed to open $keyFile\n");
-	if ((read KEYFILE, $key, 16) != 16) {die("failed to read key\n")};
-	if ((read KEYFILE, $iv, 16) != 16) {die("failed to read iv\n")};
-	close(KEYFILE);
-
-	# we then pass the url of the file to be encrypted, the filename, and
-	# the encryption key and IV, to the encryption function.
-	# The encryption function encrypts the file, then returns the full path
-	# to the encrypted file.
-	# The encrypted file is then copied to the encrypted directory, and this
-	# script's work is done.
-	my $outFile = Encrypt($url, $fname, $key, $iv); 
- 	copy($outFile, $encrypted);
-  }
+Main();

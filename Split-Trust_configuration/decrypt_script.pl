@@ -53,63 +53,68 @@ sub Decrypt
  	`aescrypt -d -p $pWord -o $output $fileURL`;
  	return $output;
   }
-  
-# This script monitors the "Enc" directory which holds the user's
-# ciphertext files.
-# When a file uploaded by the user is encrypted, and placed in this
-# directory, or an encrypted file is received from the CSP, this script 
-# is triggered, by the matching rule specified in the incrontab file
-# (/var/spool/incron/root), and this matching rule passes the url of 
-# the file to this script.
-# Note that the rules, specifiying the directories to be monitored by incron,
-# the events to monitor, and the actions to take when the events occur,
-# are created during the configuration setup phase (split-trust_config.sh 
-# -- specifically in the Enc_Image_Setup () function)
-chomp($url);
 
-# we extract the file name from the url
-my $fname = fileparse($url);
-my $compareFile = $tmpEnc . $fname;
+sub Main
+  {  
+	# This script monitors the "Enc" directory which holds the user's
+	# ciphertext files.
+	# When a file uploaded by the user is encrypted, and placed in this
+	# directory, or an encrypted file is received from the CSP, this script 
+	# is triggered, by the matching rule specified in the incrontab file
+	# (/var/spool/incron/root), and this matching rule passes the url of 
+	# the file to this script.
+	# Note that the rules, specifiying the directories to be monitored by incron,
+	# the events to monitor, and the actions to take when the events occur,
+	# are created during the configuration setup phase (split-trust_config.sh 
+	# -- specifically in the Enc_Image_Setup () function)
+	chomp($url);
 
-# We check if the file that triggered the script has a similar copy
-# in the "tmpEnc" directory. If a similar copy exists in the tmpEnc 
-# directory, it means that the file should not be decrypted, since 
-# it has just been encrypted.
-# When the "encrypt_script", in charge of encryption, encrypts a file,
-# it places a copy of the encrypted file in the tmpEnc 
-# directory, before copying the file to the "Enc" directory.
-# This helps distinguish between the case where a file entering the 
-# "Enc" directory(which triggers this script), is from the CSP and 
-# needs to be decrypted, or is from the user and has just been encrypted.
-# We need to distinguish these two cases in order to avoid
-# getting into an infinite loop of encryption/decryption over the same file.
-my $fileCheck = compare($url, $compareFile);
+	# we extract the file name from the url
+	my $fname = fileparse($url);
+	my $compareFile = $tmpEnc . $fname;
+
+	# We check if the file that triggered the script has a similar copy
+	# in the "tmpEnc" directory. If a similar copy exists in the tmpEnc 
+	# directory, it means that the file should not be decrypted, since 
+	# it has just been encrypted.
+	# When the "encrypt_script", in charge of encryption, encrypts a file,
+	# it places a copy of the encrypted file in the tmpEnc 
+	# directory, before copying the file to the "Enc" directory.
+	# This helps distinguish between the case where a file entering the 
+	# "Enc" directory(which triggers this script), is from the CSP and 
+	# needs to be decrypted, or is from the user and has just been encrypted.
+	# We need to distinguish these two cases in order to avoid
+	# getting into an infinite loop of encryption/decryption over the same file.
+	my $fileCheck = compare($url, $compareFile);
   
-if ( $fileCheck == 0 )
-  {
-    # if a similar copy of the file exists in the tmpEnc directory,
-	# it means the received file has just been encrypted, and shouldn't
-	# be decrypted.
-	# we delete the copy of the file in the tmpEnc directory, and exit.
-	# There's nothing else to do.
-   	unlink $compareFile;
-  }
-else
-  { 
-	# otherwise, the file needs to be decrypted, and we proceed as follows:
-	# we open the file containing the decryption password/key,
-	# extract the password/key, and close the file.
-	open(PASSFILE, "<$passFile") || die ("failed to open $passFile\n");
-	my $passWord = <PASSFILE>;
-	chomp($passWord);
-	close(PASSFILE);
+	if ( $fileCheck == 0 )
+	 {
+		# if a similar copy of the file exists in the tmpEnc directory,
+		# it means the received file has just been encrypted, and shouldn't
+		# be decrypted.
+		# we delete the copy of the file in the tmpEnc directory, and exit.
+		# There's nothing else to do.
+		unlink $compareFile;
+	 }
+	else
+	 { 
+		# otherwise, the file needs to be decrypted, and we proceed as follows:
+		# we open the file containing the decryption password/key,
+		# extract the password/key, and close the file.
+		open(PASSFILE, "<$passFile") || die ("failed to open $passFile\n");
+		my $passWord = <PASSFILE>;
+		chomp($passWord);
+		close(PASSFILE);
 	
-	# we then pass the url of the file to be decrypted, the filename, and
-	# the decryption password/key to the decryption function.
-	# The decryption function decrypts the file, then returns the full path
-	# to the decrypted file.
-	# The decrypted file is then copied to the decrypted directory, and this
-	# script's work is done.
- 	my $outFile = Decrypt($url, $fname, $passWord);
- 	copy($outFile, $decrypted);
+		# we then pass the url of the file to be decrypted, the filename, and
+		# the decryption password/key to the decryption function.
+		# The decryption function decrypts the file, then returns the full path
+		# to the decrypted file.
+		# The decrypted file is then copied to the decrypted directory, and this
+		# script's work is done.
+		my $outFile = Decrypt($url, $fname, $passWord);
+		copy($outFile, $decrypted);
+	 }
   }
+  
+Main();
